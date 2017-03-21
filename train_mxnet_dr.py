@@ -49,6 +49,15 @@ def get_symbol_lenet(num_classes=10, add_stn=False, **kwargs):
 
     return lenet
 
+def save_model(model_prefix, rank=0):
+    if model_prefix is None:
+        return None
+    dst_dir = os.path.dirname(model_prefix)
+    if not os.path.isdir(dst_dir):
+        os.mkdir(dst_dir)
+
+    return mx.callback.do_checkpoint(model_prefix if rank == 0 else "%s-%d" % (model_prefix, rank))
+
 def read_data():
     """
     read data into numpy
@@ -82,14 +91,18 @@ if __name__ == '__main__':
     initializer = mx.init.Xavier(rnd_type='gaussian', factor_type="in", magnitude=2)
     # callbacks that run after each batch
     batch_end_callbacks = [mx.callback.Speedometer(64, 100)]
+
+    # save model
+    checkpoint = save_model('models/lenet/')
     model.fit(train_iter,
               num_epoch          = 20,
               initializer        = initializer,
               batch_end_callback = batch_end_callbacks,
+              epoch_end_callback = checkpoint,
               allow_missing      = True)
     print '******* train done ***************'
     # prob = model.predict(x_train[4, 0, :, :])[0]
-    num_batch = 2
+    num_batch = 12
     prob = model.predict(valid_iter, num_batch = num_batch).asnumpy()
     for i in range(num_batch):
         # assert max(prob) > 0.99, "Low prediction accuracy."
